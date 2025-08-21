@@ -1,7 +1,7 @@
 Subscription records for MavenFlix, a fictitious video streaming platform. Dataset includes information for ~2,900 subscribers from September 2022 through September 2023. Each record represents an individual customer's subscription, including the subscription cost, created/canceled date, interval, and payment status.
 
-**Key Insights from MavenFlix Subscription Data
-1. Subscription Trend Over Time**
+**Key Insights from MavenFlix Subscription Data**
+**1. Subscription Trend Over Time**
 •	Subscriptions increased steadily from Sep 2022 to Sep 2023.
 •	Peak subscription months identified (e.g., months with marketing campaigns or promotions).
 •	Helps in planning marketing and resource allocation.
