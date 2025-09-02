@@ -1,39 +1,37 @@
-Subscription records for MavenFlix, a fictitious video streaming platform. Dataset includes information for ~2,900 subscribers from September 2022 through September 2023. Each record represents an individual customer's subscription, including the subscription cost, created/canceled date, interval, and payment status.
+**Mavenflix Subscription Analysis
+Project Overview**
 
-**Key Insights from MavenFlix Subscription Data**
-**1. Subscription Trend Over Time**
-•	Subscriptions increased steadily from Sep 2022 to Sep 2023.
-•	Peak subscription months identified (e.g., months with marketing campaigns or promotions).
-•	Helps in planning marketing and resource allocation.
-**2. Long-Term Subscribers (≥5 months)**
-•	A significant percentage of customers stay subscribed for 5 months or more.
-•	Indicates loyal customer base that can be targeted for upselling or premium plans.
-**3. Monthly Subscriber Retention**
-•	Certain months have high retention, while others show low retention.
-•	Understanding retention patterns allows timely interventions for churn prevention.
-**4. First-Month Cancellations**
-•	A notable percentage of customers cancel within the first 30 days.
-•	Early churn is a critical metric for improving onboarding experience and initial engagement.
-**5. Re-Subscribed Customers**
-•	Some customers resubscribe after canceling, showing potential for customer reactivation campaigns.
-•	Helps estimate lifetime value recovery opportunities.
-**6. Average Subscription Duration**
-•	Average subscription duration per customer is calculated in months.
-•	Provides a benchmark to understand typical customer behavior and engagement.
-**7. Customer Tenure Segmentation**
-•	Customers segmented into:
-o	Short-term (<3 months)
-o	Medium-term (3–6 months)
-o	Long-term (>6 months)
-•	Helps identify high-risk churn groups and loyal customer segments.
-**8. Top Paid Customers by Tenure**
-•	Top 50 paid customers identified along with their tenure segment.
-•	Critical for retention strategies and premium offers targeting high-value users.
-**9. Seasonal Sign-Ups and Cancellations**
-•	Subscription spikes and cancellations vary by month and season:
-o	Winter, Spring, Summer, Autumn trends identified.
-•	Seasonal insights can guide promotions, campaigns, and resource planning.
-**10. Lost Revenue Analysis**
-•	Total revenue lost due to cancellations is quantified.
-•	Comparison to potential revenue if customers had stayed active helps prioritize retention campaigns and revenue recovery strategies.
+This project analyzes Mavenflix subscription data to understand customer behavior, retention, cancellations, and revenue trends. The goal is to provide actionable insights to improve customer engagement, reduce churn, and optimize subscription revenue.
+
+**Objectives**
+
+1. Analyze subscription trends over time.
+2. Measure customer retention and identify at-risk segments.
+3. Examine first-month cancellations and re-subscription patterns.
+4. Segment customers based on subscription duration.
+5. Assess seasonal trends in sign-ups and cancellations.
+6. Evaluate lost revenue due to cancellations.
+
+**Dataset**
+
+The dataset contains subscription records for Mavenflix customers.
+Key fields include:
+customer_id – Unique ID for each customer
+created_date – Subscription start date
+canceled_date – Subscription cancellation date (if any)
+subscription_cost – Amount paid for subscription
+was_subscription_paid – Indicator if subscription was paid
+
+**Key Analysis & Insights**
+
+1. Subscriptions peaked at 92 new sign-ups in March 2023.
+2. 34.52% of customers remain subscribed for 5 months or more.
+3. Retention peaked in May 2023 at 53.33% and dropped to 4.35% in April 2022.
+4. 65.48% of cancellations occur within the first month.
+5. Only 24.8% of customers re-subscribe after canceling.
+6. Average subscription duration ranges mostly between 6–12 months; some long-term users exceed 40 months.
+7. Customer segmentation: 634 long-term, 460 short-term, 157 medium-term.
+8. Sign-ups peak in Spring and Winter, cancellations peak in Autumn.
+9. Lost revenue due to cancellations: 32,331, accounting for 106.56% of paid subscriptions.
+10.364 customers have subscriptions lasting 1 month or less.
 
