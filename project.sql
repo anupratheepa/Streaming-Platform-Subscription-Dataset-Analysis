@@ -1,225 +1,477 @@
---1.How have Mavenflix subscriptions trended over time--
 
-select 
-    to_char(created_date, 'yyyy-mm') as month,
-    count(customer_id) as subscriptions_started
-from subscriptiondata
-group by to_char(created_date, 'yyyy-mm')
-order by month;
+Procedure SHOW_CUST_SUB_SUMMARY compiled
 
 
---2.What percentage of customers have subscribed for 5 months or more?--
-select
-    round(
-        (count(
-            case 
-                when months_between(
-                        nvl(to_date(canceled_date, 'yyyy-mm-dd hh24:mi:ss'), sysdate),
-                        created_date
-                    ) >= 5 
-                then 1 
-            end
-        ) / count(*)) * 100,
-        2
-    ) as pct_customers_Subsc
-from subscriptiondata;
-
-
---3.What month has the highest subscriber retention, the lowest retention?--
-
-with monthly_subs as (
-    select 
-        to_char(created_date, 'yyyy-mm') as month,
-        count(*) as started
-    from subscriptiondata
-    group by to_char(created_date, 'yyyy-mm')
-),
-monthly_retained as (
-    select 
-        to_char(created_date, 'yyyy-mm') as month,
-        count(*) as retained
-    from subscriptiondata
-    where canceled_date is null
-          or to_date(canceled_date, 'yyyy-mm-dd hh24:mi:ss') > created_date
-    group by to_char(created_date, 'yyyy-mm')
-)
-select 
-    m.month,
-    round((r.retained/m.started)*100, 2) as retention_rate
-from monthly_subs m
-join monthly_retained r on m.month = r.month
-order by retention_rate desc;
-
-
---4. What percentage of cancellations occur within the first month of joining?--
---Couting customers who cancelled the subscription within 30 days--
-with first_month_of_cancellations as(
-    select count(*) as cancelled_within_first_month
-    from subscriptiondata
-    where canceled_date is not null or
-    canceled_date <=created_date+interval '30' day
-    ),
---count total customers--
-total_customer as (
-    select 
-    count(*) as total_subscribed
-    from subscriptiondata
-    )
---compute cancellation percentage--
-
-select Round ((a.cancelled_within_first_month/b.total_subscribed)*100.00,2) as ptg_cancellation
-from first_month_of_cancellations a, total_customer b;
-
-
---5.What percentage of customers have re-subscribed after canceling once?--
-
--- Counting customers who re-subscribed
-with resubscribed_customers as (
-    select distinct a1.customer_id
-    from subscriptiondata a1
-    join subscriptiondata a2
-    on a1.customer_id = a2.customer_id
-    and a2.created_date > a1.canceled_date
-    where a1.canceled_date is not null
-),
--- Total distinct Customers count
-Customer_total as (
-    select count(distinct customer_id) as total_cust
-    from subscriptiondata
-)
-select
-    round(
-        ( (select count(distinct customer_id) From resubscribed_customers) * 100.0
-          / (select total_cust From Customer_total) )
-    , 2) as resubscribed_ptg
-from dual;
-
---6. Average Subscription Duration--
-
-select 
-    customer_id,
-    round(
-        avg(
-            months_between(nvl(canceled_date, sysdate), created_date)
-        ), 2
-    ) as avg_sub_duration_months
-from subscriptiondata
-group by customer_id;
-
---7.Customer Tenure Segmentation--
-select 
-    case 
-        when months_between(nvl(canceled_date, sysdate), created_date) < 3 
-            then 'short_term_customer'
-        when months_between(nvl(canceled_date, sysdate), created_date) between 3 and 6 
-            then 'medium_term_customer'
-        else 'long_term_customer'
-    end as customer_tenure_segment,
-    count(distinct customer_id) as customer_count
-from subscriptiondata
-group by 
-    case 
-        when months_between(nvl(canceled_date, sysdate), created_date) < 3 
-            then 'short_term_customer'
-        when months_between(nvl(canceled_date, sysdate), created_date) between 3 and 6 
-            then 'medium_term_customer'
-        else 'long_term_customer'
-    end
-order by count(distinct customer_id) desc;
-
---8. Top 50 Paid Customers Segmented by Subscription Tenure--
-select * from (
-    select customer_id, subscription_cost,
-        case 
-        when months_between(nvl(canceled_date, sysdate), created_date) < 3 
-            then 'short_term_customer'
-        when months_between(nvl(canceled_date, sysdate), created_date) between 3 and 6 
-            then 'medium_term_customer'
-        else 'long_term_customer'
-    end as customer_tenure_segment
-    from subscriptiondata
-    where was_subscription_paid = 'No'
-    order by customer_tenure_segment desc
-) where rownum<=50;
+PL/SQL procedure successfully completed.
 
 
 
---9.months or seasons where sign-ups spike or cancellations increase--
---Monthly Sign-ups Trend--
-select 
-    to_char(created_date, 'yyyy-mm') as month,
-    count(customer_id) as signups
-from subscriptiondata
-group by to_char(created_date, 'yyyy-mm')
-order by month;
---Monthly Cancellations Trend--
-select 
-    to_char(to_date(canceled_date, 'yyyy-mm-dd'), 'yyyy-mm') as month,
-    count(customer_id) as cancellations
-from subscriptiondata
-where canceled_date is not null
-group by to_char(to_date(canceled_date, 'yyyy-mm-dd'), 'yyyy-mm')
-order by month;
--- Season-wise sign-ups and cancellations
-with seasonal_signups as (
-    select 
-        case 
-            when extract(month from created_date) in (12,1,2) then 'Winter'
-            when extract(month from created_date) in (3,4,5) then 'Spring'
-            when extract(month from created_date) in (6,7,8) then 'Summer'
-            else 'Autumn'
-        end as season,
-        count(customer_id) as signups
-    from subscriptiondata
-    group by 
-        case 
-            when extract(month from created_date) in (12,1,2) then 'Winter'
-            when extract(month from created_date) in (3,4,5) then 'Spring'
-            when extract(month from created_date) in (6,7,8) then 'Summer'
-            else 'Autumn'
-        end
-),
-seasonal_cancellations as (
-    select 
-        case 
-            when to_number(substr(canceled_date,6,2)) in (12,1,2) then 'Winter'
-            when to_number(substr(canceled_date,6,2)) in (3,4,5) then 'Spring'
-            when to_number(substr(canceled_date,6,2)) in (6,7,8) then 'Summer'
-            else 'Autumn'
-        end as season,
-        count(customer_id) as cancellations
-    from subscriptiondata
-    where canceled_date is not null
-    group by 
-        case 
-            when to_number(substr(canceled_date,6,2)) in (12,1,2) then 'Winter'
-            when to_number(substr(canceled_date,6,2)) in (3,4,5) then 'Spring'
-            when to_number(substr(canceled_date,6,2)) in (6,7,8) then 'Summer'
-            else 'Autumn'
-        end
-)
-select 
-    s.season,
-    s.signups,
-    nvl(c.cancellations,0) as cancellations
-from seasonal_signups s
-left join seasonal_cancellations c
-on s.season = c.season
-order by signups desc;
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  203366396           -3.74
+  210694562           -3.19
+  218624538           -3.52
+  218467300           -3.81
+  218509554           -4.52
+  217260184           -5.77
+  140371292           -4.87
+  217206158           -3.84
+  215180470              -4
+  217246611              -5
+  217080066           -4.81
 
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  164903790           -4.55
+  215075697           -5.81
+  174646950           -5.55
+  175564124           -6.03
+  114992353           -3.71
+  212339137           -6.74
+  215149530           -5.19
+  211334702           -4.32
+  182357706              -5
+  208772540           -7.16
+  205734465           -5.87
 
---10. Lost Revenue Analysis
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  212057431           -7.71
+  211333348           -4.87
+  149761545           -4.32
+  206284048           -8.52
+  197873706           -3.71
+  184567432          -10.29
+  179356036          -10.65
+  175760281           -9.65
+  183406772           -8.87
+  150793080              -9
+  185367349          -10.61
 
-select 
-    sum(sub.SUBSCRIPTION_COST) as total_lost_revenue,
-    round(
-        (sum(sub.SUBSCRIPTION_COST) / sum(case when was_subscription_paid='Yes' then sub.SUBSCRIPTION_COST else 0 end)) * 100, 
-        2
-    ) as lost_revenue_percentage
-from subscriptiondata sub
-where sub.canceled_date is not null;
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  185374268          -10.61
+  153186137          -10.61
+  185503171           -4.87
+  171922477           -5.13
+  144830936           -4.16
+  162095012          -10.23
+  219876215           -2.87
+  151633468           -2.87
+  219834528           -2.87
+  150779000           -2.06
+  202844600           -2.87
 
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  218304590           -2.26
+  218569099           -2.06
+  215390636              -2
+  218538760           -2.65
+  180161087            -2.9
+  218484551           -2.65
+  218570737           -3.84
+  218544489           -2.87
+  217208086           -3.35
+  129819604           -3.61
+  215534470           -3.61
 
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  134919488           -2.94
+  215146368           -5.55
+  206145911           -5.81
+  215132378              -5
+  215138344            -5.1
+  214912916           -4.81
+  123946316           -4.58
+  144469362            -6.1
+  187268085           -5.87
+  126391978           -3.48
+  211906202           -5.42
 
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  211911280           -2.39
+  210088359           -4.29
+  138104184           -1.87
+  168264884           -5.77
+  206251362           -6.52
+  192386902           -6.52
+  205851263           -7.65
+  153200640           -6.71
+  138913080           -6.35
+  186843516           -6.45
+  133869989           -8.68
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  134879280           -7.84
+  184812094           -6.81
+  152089648           -7.45
+  148710968           -8.81
+  150065982            -1.9
+  214924190            -1.9
+  217709772           -1.84
+  143111905           -1.68
+  216337502            -2.9
+  218490122           -2.87
+  218496811            -2.9
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  218519862           -2.87
+  216335430            -2.9
+  218526124           -2.87
+  218459038           -2.87
+  217773501            -2.9
+  217914198           -2.26
+  217110396           -3.42
+  168200039           -3.84
+  217159016           -1.84
+  214698924           -4.84
+  153402484           -3.87
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  215062365           -2.06
+  214809412           -1.87
+  161182706           -4.58
+  201122030           -3.94
+  156218152           -3.81
+  162718092           -4.77
+  174606946           -4.81
+  206159331           -6.29
+  150422738           -7.71
+  190839721           -6.52
+  183346055           -6.48
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  184310344           -5.68
+  178952278           -6.68
+  184345202           -7.29
+  182837162           -7.87
+  182927038           -7.45
+  181739784           -7.77
+  178605410           -7.48
+  215602271           -0.77
+  219761422           -0.81
+  218594597           -0.97
+  217766676           -1.35
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  206121650            -1.9
+  218129819           -1.13
+  153876204           -2.87
+  132442956           -1.29
+  216225148            -2.9
+  161187748           -1.42
+  217137211           -1.68
+  180796559           -1.68
+  130331160           -2.13
+  164548755           -1.65
+  145013444           -3.23
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  215034356           -3.87
+  188748372           -2.65
+  150342446           -2.65
+  208188866           -2.87
+  139339380           -2.58
+  214952558           -3.84
+  151513254           -3.87
+  193315330           -0.65
+  153163612           -4.35
+  211266858           -4.06
+  209505551           -4.32
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  205881578           -0.23
+  152513944           -5.77
+  132371176           -5.77
+  135092264           -1.74
+  151297084           -3.29
+  167010855           -2.84
+  206122788           -2.58
+  158439764           -4.06
+  136723151           -4.87
+  205875358           -4.39
+  206082900           -1.06
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  144830936           -6.74
+  168980588           -6.77
+  169081778           -0.55
+  195893842           -6.16
+  197883626           -5.55
+  182748610           -4.71
+  148764147           -4.81
+  202103959           -3.19
+  136832520           -5.74
+  136326172           -5.77
+  153704184           -4.77
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  182929556           -4.71
+  162946328           -3.77
+  138520918           -7.74
+  128768010           -7.65
+  169141612           -7.71
+  182505210           -6.77
+  219747148               0
+  219710700             .29
+  215723331             .26
+  217499098           -0.94
+  216795282           -0.45
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  216624401           -1.29
+  217084888           -1.94
+  206891818           -1.29
+  217094352           -1.13
+  202925989           -1.68
+  214991976           -1.45
+  211917633           -2.35
+  214623264           -0.68
+  205339362            -0.9
+  209743418            -0.9
+  207344872           -1.94
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  214960770           -1.06
+  146963394           -1.03
+  130868671           -1.71
+  209743418           -2.87
+  210135815           -3.55
+  211224883           -3.84
+  211212313           -1.94
+  203152686           -2.42
+  206017161           -4.81
+  154082747           -4.81
+  203320717           -3.87
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  202410948           -4.58
+  203166018           -4.81
+  203116697           -4.32
+  202982608              -5
+  198167700           -5.71
+  190567582           -5.35
+  202699972             .16
+  194306726           -5.03
+  156558244           -0.06
+  203107308           -2.55
+  203120229           -1.52
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  203225874           -2.94
+  161269602           -6.77
+  145799416           -5.71
+  182753953           -3.94
+  162944728              -5
+  161249852           -6.55
+  218556897               1
+  133444654              .1
+  217883594             .65
+  217065874           -0.26
+  216907852              .1
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  214620392             .06
+  214936311           -1.94
+  185952990           -0.84
+  214830539           -0.71
+  214939612           -0.06
+  214839844             .06
+  204670100             .29
+  134833306           -1.87
+  210617010           -0.84
+  210694562           -1.68
+  205971108           -0.39
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  205878686           -3.87
+  206001231            -1.1
+  142757196             .19
+  202924219           -0.42
+  202863670           -2.61
+  202398629           -3.87
+  188448878           -4.84
+  168202891           -4.84
+  182834016           -0.58
+  183002853           -2.77
+  181712692           -5.81
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  163535855           -0.35
+  148338824           -4.81
+  216925191             .23
+  201945254            -0.1
+  150643785             .06
+  149986782               0
+  205463099             .39
+  210565466           -0.71
+  210617010           -1.94
+  134894187           -0.55
+  202160641             .06
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  205786362           -0.26
+  159798906           -1.87
+  166276152              -2
+  156353738           -2.68
+  205864612           -2.52
+  154161250           -2.39
+  150521180              .1
+  195280988             .61
+  201231494           -0.77
+  199554496           -3.81
+  125747106           -2.94
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  195345030           -2.94
+  202269874           -2.26
+  191036527           -2.84
+  202633556           -3.35
+  200490112           -3.84
+  131310280           -3.52
+  182719870            -0.9
+  182408430           -0.71
+  181072524             .94
+  182747824           -1.61
+  182627508           -4.84
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  182727349           -3.84
+  182636324           -3.94
+  170485769           -4.84
+  182700534           -2.19
+  208202304               0
+  132315255               0
+  186140999             .94
+  214869362             .84
+  209517408               0
+  124155104             .26
+  210326352           -0.97
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  210327236           -0.94
+  210432450           -0.74
+  205703512             .84
+  131181843           -1.94
+  192182455             .13
+  132256211           -1.68
+  202505276           -1.61
+  182295766           -1.65
+  152750569           -2.65
+  178345451           -2.65
+  182408564              .1
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  155956314           -3.87
+  166930287           -3.84
+  155881023           -1.97
+  209730490             .03
+  143706140              .1
+  209950443             .32
+  208892072             .68
+  205768824           -0.06
+  160824884           -0.03
+  205742224           -0.97
+  197151544           -0.39
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  202305934           -0.45
+  202410436           -1.26
+  184539258               1
+  181003342           -1.13
+  160532210           -1.65
+  146860806            -0.9
+  163103592           -2.87
+  125635419             .03
+  205707486             .03
+  150663700             .03
+  205731473             .52
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  201162862             .26
+  198748705             .77
+  200894076              .9
+  199895190             .35
+  153568282           -0.55
+  202277130             .97
+  137196428             .23
+  180718702           -1.23
+  180798046           -1.03
+  176445635           -0.45
+  180959934             .23
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  180968287             .84
+  156943008             .97
+  201182176               1
+  202010803             .97
+  180123121           -0.97
+  180198528             .26
+  198475060               1
+  153186137           -0.97
+  161424706           -0.06
+  157833252           -1.58
+  157868778            -1.1
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  152698255            -1.9
+  155425695           -1.68
+  154689541           -2.87
+  152436458            -2.9
+  129447970               1
+  149728468             .03
+  157394598           -0.94
+  156110000             .19
+  155926313             .58
+  157765918           -0.94
+  155334828           -0.94
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  154815431           -1.94
+  155017581           -0.23
+  154401329           -0.81
+  159639128             .97
+  157058101             .97
+  155283495           -0.03
+  154391473              .1
+  154597373            -0.1
+  156943008               1
+  155145336             .81
+  155188498               1
+
+CUSTOMER_ID DURATION_MONTHS
+----------- ---------------
+  153684891               1
+
+364 rows selected.
 
 
